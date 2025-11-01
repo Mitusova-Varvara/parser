@@ -1,54 +1,98 @@
 // @todo: напишите здесь код парсера
 
-function parsePage() {
+// Ищем подстроку с валютой в цене
+const getCurrency = (price) => {
+  const currency = {
+    "₽": "RUB",
+    $: "USD",
+    "€": "EUR",
+  };
+  for (let item in currency) {
+    if (price.includes(item)) {
+      return currency[item];
+    }
+  }
+};
+
+// Проверяем есть ли в массив класс active
+const getStatusLike = (buttonLikeClassList) => {
+  for (const item of buttonLikeClassList) {
+    if (item === "active") {
+      return true;
+    } else return false;
+  }
+};
+
+// Высчитываем скидку
+const getDiscount = (a, b) => {
+  return parseInt(a) - parseInt(b);
+};
+
+//Высчитываем процент скидки
+const getDiscountPercent = (a, b) => {
+  if (parseInt(a) > parseInt(b)) {
+    let x = parseInt(a) - parseInt(b);
+    let percent = (x * 100) / parseInt(a);
+    return `${percent.toFixed(2)}%`;
+  } else return "0%";
+};
+
+const getMeta = () => {
   const head = document.querySelector("head");
 
-  const headTitle = head.querySelector("title").textContent.split("—"); // Заголовок страницы разделенный "-"
-  const keyWordsPage = head
+  const headTitle = head
+    .querySelector("title")
+    .textContent.split("—")[0]
+    .trim(); // Заголовок страницы разделенный "-"
+  const pageKeyWords = head
     .querySelector('meta[name="keywords"]')
     .getAttribute("content")
-    .split(", "); // Ключевые слова для поиска страницы
-  const descriptionPage = head.querySelector('meta[name="description"]'); // Описание страницы
-  const ogMetaTeg = head.querySelectorAll('meta[property^="og"]'); // Все мета-теги начинающиеся с og
+    .split(", ");
+  const pageDescription = head
+    .querySelector('meta[name="description"]')
+    .getAttribute("content"); // Описание страницы
+  const ogMetaTag = head.querySelectorAll('meta[property^="og"]'); // Все мета-теги начинающиеся с og
 
-  const ogMetaTegsObject = {}; // Пустой массив
-  ogMetaTeg.forEach((teg) => {
-    ogMetaTegsObject[teg.getAttribute("property").replace("og:", "")] = teg
+  const ogMetaTags = {};
+  ogMetaTag.forEach((teg) => {
+    ogMetaTags[teg.getAttribute("property").replace("og:", "")] = teg
       .getAttribute("content")
-      .replace(" — Modern Development Tool", ""); //Тут вообще супер не уверена, но как сделать по другому - хз...
-  }); // Итерируемся по всему массиву мета-тегов и записываем ключ/значение
+      .split("—")[0]
+      .trim(); //Тут вообще супер не уверена, но как сделать по другому - хз...
+  });
+  // Итерируемся по всему массиву мета-тегов и записываем ключ/значение
+  return {
+    language: document.querySelector("html").lang,
+    title: headTitle,
+    keywords: pageKeyWords,
+    description: pageDescription,
+    opengraph: ogMetaTags,
+  };
+};
 
-  // Секция продуктов
+const getProduct = () => {
   const productSection = document.querySelector(".product");
 
   const nav = productSection.querySelector("nav");
-  const imageProduct = nav.querySelectorAll("img"); //Получаем все изображения
-  const imageProductSet = [];
-  imageProduct.forEach((img) => {
-    imageProductSet.push({
+  const productImage = nav.querySelectorAll("img");
+  const productImageSet = [];
+  productImage.forEach((img) => {
+    productImageSet.push({
       preview: img.getAttribute("src"),
       full: img.dataset.src,
       alt: img.getAttribute("alt"),
     });
   });
 
-  const buttonLikeClassList = productSection.querySelector(".like").classList; // Массив классов кнопки "like"
+  const buttonLikeClassList = productSection.querySelector(".like").classList;
 
-  let getStatusLike = () => {
-    for (const item of buttonLikeClassList) {
-      if (item === "active") {
-        return true;
-      } else return false;
-    }
-  }; // Проверяем есть ли в массив класс active
-
-  const allCatecory = productSection.querySelectorAll(".tags span"); // Массив со всеми тегами категорий
+  const categories = productSection.querySelectorAll(".tags span");
   const category = {
     category: [],
     label: [],
     discount: [],
-  }; //Пустой
-  allCatecory.forEach((item) => {
+  };
+  categories.forEach((item) => {
     switch (item.className) {
       case "green":
         category["category"].push(item.textContent);
@@ -70,44 +114,36 @@ function parsePage() {
   const price = productSection
     .querySelector(".price span")
     .textContent.replace("₽", ""); // Цена без скидки
-  const getDiscount = () => {
-    return parseInt(price) - parseInt(newSalePrice);
-  }; // Высчитываем скидку
-  const getDiscountPercent = () => {
-    if (parseInt(price) > parseInt(newSalePrice)) {
-      let a = parseInt(price) - parseInt(newSalePrice);
-      let percent = (a * 100) / parseInt(price);
-      return `${percent.toFixed(2)}%`;
-    } else return "0%";
-  };
 
-  const getCurrency = (price) => {
-    if (price.includes("₽")) {
-      return "RUB";
-    }
-    if (price.includes("$")) {
-      return "USD";
-    }
-    if (price.includes("€")) {
-      return "EUR";
-    }
-  }; // Ищем подстроку с валютой в цене
-
-  const properties = productSection.querySelectorAll(".properties li"); //Массив со всеми свойствами
+  const properties = productSection.querySelectorAll(".properties li");
   const propertiesObject = {};
   properties.forEach((item) => {
     propertiesObject[item.firstElementChild.textContent] =
       item.lastElementChild.textContent;
   }); // Переписываем массив в новый ключ/значение - это два разных span
 
-  const getDescriptionProduct = () => {
-    productSection.querySelector(".description h3").removeAttribute("class");
-    const description = productSection.querySelector(".description").innerHTML;
-    return description.trim(); //Массив с описанием товара, необходимо вывести html разметку
+  productSection.querySelector(".description h3").removeAttribute("class");
+  const description = productSection
+    .querySelector(".description")
+    .innerHTML.trim(); //Массив с описанием товара, необходимо вывести html разметку
+
+  return {
+    id: productSection.dataset.id,
+    images: productImageSet,
+    isLiked: getStatusLike(buttonLikeClassList),
+    name: document.querySelector("h1").textContent,
+    tags: category,
+    price: parseInt(newSalePrice),
+    oldPrice: parseInt(price),
+    discount: getDiscount(price, newSalePrice),
+    discountPercent: getDiscountPercent(price, newSalePrice),
+    currency: getCurrency(salePrice),
+    properties: propertiesObject,
+    description: description,
   };
+};
 
-  //Работа с карточками товара
-
+const getProductCards = () => {
   const productCardSection = document.querySelector(".suggested");
   const suggestedObject = []; // Пустой объект с массивом.
 
@@ -121,9 +157,10 @@ function parsePage() {
       currency: getCurrency(card.querySelector("b").textContent),
     });
   });
+  return suggestedObject;
+};
 
-  //Работа с отзывами
-
+const getReviewCards = () => {
   const reviewsSection = document.querySelector(".reviews");
   const reviewsObject = []; // Пустой объект с массивом.
 
@@ -140,31 +177,15 @@ function parsePage() {
       date: card.querySelector(".author i").textContent.replaceAll("/", "."),
     });
   });
+  return reviewsObject;
+};
 
+function parsePage() {
   return {
-    meta: {
-      language: document.querySelector("html").lang,
-      title: headTitle[0].trim(),
-      keywords: keyWordsPage,
-      description: descriptionPage.getAttribute("content"),
-      opengraph: ogMetaTegsObject,
-    },
-    product: {
-      id: productSection.dataset.id,
-      images: imageProductSet,
-      isLiked: getStatusLike(),
-      name: document.querySelector("h1").textContent,
-      tags: category,
-      price: parseInt(newSalePrice),
-      oldPrice: parseInt(price),
-      discount: getDiscount(),
-      discountPercent: getDiscountPercent(),
-      currency: getCurrency(salePrice),
-      properties: propertiesObject,
-      description: getDescriptionProduct(),
-    },
-    suggested: suggestedObject,
-    reviews: reviewsObject,
+    meta: getMeta(),
+    product: getProduct(),
+    suggested: getProductCards(),
+    reviews: getReviewCards(),
   };
 }
 
